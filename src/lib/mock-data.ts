@@ -7,6 +7,7 @@ export const mockUsers: User[] = [
   { id: 'user-admin-02', email: 'admin@admin.com', role: 'admin', isVerified: true, name: 'Super Admin', password: 'Admin123' }, // New admin as per request
   { id: 'user-voter-02', email: 'another.voter@example.com', role: 'voter', isVerified: true, name: 'Alex Smith', password: 'Password123' },
   { id: 'user-unverified-01', email: 'unverified.user@example.com', role: 'voter', isVerified: false, name: 'Unverified Test', password: 'Password123' },
+  { id: 'user-voter-03', email: 'user@user.com', role: 'voter', isVerified: true, name: 'Test User', password: 'User123' },
 ];
 
 const sampleQuestions: BallotQuestion[] = [

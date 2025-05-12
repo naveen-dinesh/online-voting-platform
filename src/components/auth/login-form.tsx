@@ -118,7 +118,7 @@ export function LoginForm({ initialRole = 'voter' }: LoginFormProps) {
                       <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                       <Input 
                         type="email" 
-                        placeholder={selectedRole === 'admin' ? "admin@admin.com" : "voter@example.com"}
+                        placeholder="Enter your email"
                         {...field} 
                         className="pl-12 py-6 text-base"
                         aria-describedby="email-error"
