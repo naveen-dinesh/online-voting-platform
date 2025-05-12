@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from 'next/link';
@@ -47,25 +46,23 @@ export function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-20 items-center justify-between"> {/* Changed to justify-between */}
-        <Link href="/" className="flex items-center space-x-2 group"> {/* Removed mr-6 */}
+      <div className="container flex h-20 items-center"> {/* Removed justify-between */}
+        <Link href="/" className="flex items-center space-x-2 group">
           <Vote className="h-8 w-8 text-primary transition-transform group-hover:scale-110" />
           <span className="font-bold sm:inline-block text-2xl tracking-tight">
             VoteWise
           </span>
         </Link>
         
-        {/* Future navigation links can go here, would be grouped with the Link above or be a separate middle group */}
-        {/* <nav className="flex items-center space-x-4"> </nav> */}
-        {/* Removed: <div className="flex-1" /> */}
+        {/* Future navigation links can go here */}
+        {/* <nav className="flex items-center space-x-4 ml-4"> </nav> */} 
 
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-3 ml-auto"> {/* Added ml-auto */}
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0">
                   <Avatar className="h-10 w-10 border-2 border-primary/50">
-                    {/* Placeholder avatar, replace with actual user image if available */}
                     <AvatarImage src={`https://avatar.vercel.sh/${user.email}.png?text=${getUserInitials(user.name, user.email)}`} alt={user.name || user.email || 'User Avatar'} />
                     <AvatarFallback className="bg-primary/20 text-primary font-semibold">
                       {getUserInitials(user.name, user.email)}
@@ -98,7 +95,6 @@ export function SiteHeader() {
                     <span>Admin Panel</span>
                   </DropdownMenuItem>
                 )}
-                {/* Example for a future settings page */}
                 {/* <DropdownMenuItem onClick={() => router.push('/settings')} className="cursor-pointer">
                   <Settings className="mr-2 h-4 w-4 text-accent" />
                   <span>Account Settings</span>
@@ -122,3 +118,4 @@ export function SiteHeader() {
     </header>
   );
 }
+
