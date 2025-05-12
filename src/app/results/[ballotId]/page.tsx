@@ -1,6 +1,7 @@
 
 "use client";
 
+import { useParams } from 'next/navigation';
 import { ProtectedRoute } from "@/components/protected-route";
 import { ResultsCharts } from "@/components/results/results-charts";
 import { mockBallots, getMockResults } from "@/lib/mock-data";
@@ -9,29 +10,34 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
-import type { ResultData } from "@/types"; // Import ResultData type
+import type { ResultData } from "@/types"; 
 
-interface ResultsPageParams {
-  params: { ballotId: string };
-}
+export default function ResultsPage() {
+  const routeParams = useParams<{ ballotId: string }>();
+  const ballotId = routeParams?.ballotId;
 
-export default function ResultsPage({ params }: ResultsPageParams) {
-  const [ballot, setBallot] = useState(mockBallots.find(b => b.id === params.ballotId));
+  const [ballot, setBallot] = useState(() => ballotId ? mockBallots.find(b => b.id === ballotId) : undefined);
   const [results, setResults] = useState<ResultData[] | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setLoading(true);
-    // Simulate data fetching
-    const foundBallot = mockBallots.find(b => b.id === params.ballotId);
-    setBallot(foundBallot);
-    if (foundBallot) {
-      const fetchedResults = getMockResults(params.ballotId);
-      setResults(fetchedResults);
+    if (ballotId) {
+      const foundBallot = mockBallots.find(b => b.id === ballotId);
+      setBallot(foundBallot);
+      if (foundBallot) {
+        const fetchedResults = getMockResults(ballotId);
+        setResults(fetchedResults);
+      } else {
+        setResults(null); 
+      }
+    } else {
+      setBallot(undefined);
+      setResults(null);
     }
     // Simulate API delay
     setTimeout(() => setLoading(false), 500); 
-  }, [params.ballotId]);
+  }, [ballotId]);
 
 
   if (loading) {
@@ -50,7 +56,7 @@ export default function ResultsPage({ params }: ResultsPageParams) {
             <AlertTriangle className="h-5 w-5" />
             <AlertTitle className="text-xl">Ballot Not Found</AlertTitle>
             <AlertDescription className="mt-1">
-              The ballot for which you are trying to view results (ID: {params.ballotId}) could not be found.
+              The ballot for which you are trying to view results (ID: {ballotId || 'N/A'}) could not be found.
             </AlertDescription>
         </Alert>
         <Button asChild className="mt-6">

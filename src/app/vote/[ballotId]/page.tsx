@@ -1,6 +1,7 @@
 
 "use client";
 
+import { useParams } from 'next/navigation';
 import { ProtectedRoute } from "@/components/protected-route";
 import { VotingInterface } from "@/components/vote/voting-interface";
 import { mockBallots } from "@/lib/mock-data";
@@ -10,14 +11,13 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
-interface VotePageParams {
-  params: { ballotId: string };
-}
+export default function VotePage() {
+  const routeParams = useParams<{ ballotId: string }>();
+  const ballotId = routeParams?.ballotId;
 
-export default function VotePage({ params }: VotePageParams) {
   const { user, loading: authLoading } = useAuth();
   // In a real app, fetch ballot data from a backend API
-  const ballot = mockBallots.find(b => b.id === params.ballotId);
+  const ballot = ballotId ? mockBallots.find(b => b.id === ballotId) : undefined;
 
   if (authLoading) {
      return (
@@ -35,7 +35,7 @@ export default function VotePage({ params }: VotePageParams) {
             <AlertTriangle className="h-5 w-5" />
             <AlertTitle className="text-xl">Ballot Not Found</AlertTitle>
             <AlertDescription className="mt-1">
-              The ballot you are trying to access (ID: {params.ballotId}) could not be found. It might have been removed or the ID is incorrect.
+              The ballot you are trying to access (ID: {ballotId || 'N/A'}) could not be found. It might have been removed or the ID is incorrect.
             </AlertDescription>
         </Alert>
         <Button asChild className="mt-6">
@@ -78,3 +78,4 @@ export default function VotePage({ params }: VotePageParams) {
     </ProtectedRoute>
   );
 }
+
