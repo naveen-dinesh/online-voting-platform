@@ -10,14 +10,15 @@ import { Label } from "@/components/ui/label";
 import { useState, FormEvent, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { AlertCircle, CheckCircle2, Loader2, Send, Info } from "lucide-react";
+import { AlertCircle, CheckCircle2, Loader2, Send, Info, VoteIcon } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { mockVotes } from "@/lib/mock-data"; // For simulating vote submission
+import { mockVotes } from "@/lib/mock-data"; 
 import { isFuture, parseISO } from 'date-fns';
+import Link from "next/link";
 
 interface VotingInterfaceProps {
   ballot: Ballot;
-  user: User | null; // User should always be present due to ProtectedRoute
+  user: User | null; 
 }
 
 export function VotingInterface({ ballot, user }: VotingInterfaceProps) {
@@ -26,23 +27,67 @@ export function VotingInterface({ ballot, user }: VotingInterfaceProps) {
   const [submissionError, setSubmissionError] = useState<string | null>(null);
   const { toast } = useToast();
   const router = useRouter();
+  const [hasVoted, setHasVoted] = useState<boolean>(false);
+  const [checkingVoteStatus, setCheckingVoteStatus] = useState<boolean>(true);
 
-  // Pre-fill answers if user has already voted (for future enhancement, not used in mock)
-  // useEffect(() => {
-  //   // Example: const existingVote = mockVotes.find(v => v.ballotId === ballot.id && v.voterId === user?.id);
-  //   // if (existingVote) { ... setAnswers ... }
-  // }, [ballot.id, user?.id]);
+  useEffect(() => {
+    if (user && ballot) {
+      setCheckingVoteStatus(true);
+      // Simulate checking if the user has already voted
+      const existingVote = mockVotes.find(v => v.ballotId === ballot.id && v.voterId === user.id);
+      setHasVoted(!!existingVote);
+      setCheckingVoteStatus(false);
+    }
+  }, [ballot, user]);
+
 
   if (!user) {
-    // Should be caught by ProtectedRoute, but as a fallback
     toast({ title: "Authentication Error", description: "User not found. Please log in.", variant: "destructive" });
     router.push('/login');
     return null;
   }
+
+  if (checkingVoteStatus) {
+    return (
+      <div className="flex flex-col h-[calc(50vh)] w-full items-center justify-center">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        <p className="ml-3 text-lg mt-3">Checking your voting status...</p>
+      </div>
+    );
+  }
+
+  if (hasVoted && user.role === 'voter') { // Admin can still see interface to 'vote' (submit for testing, maybe)
+    const canViewResults = ballot.status === 'closed' || (ballot.status === 'active' && !isFuture(parseISO(ballot.endDate)));
+    return (
+      <Card className="w-full max-w-2xl mx-auto shadow-xl my-8 border-accent/30">
+        <CardHeader className="bg-accent/5 p-6 rounded-t-lg">
+            <div className="flex items-center space-x-3">
+                <VoteIcon className="h-8 w-8 text-accent" />
+                <CardTitle className="text-2xl md:text-3xl font-bold text-accent">Vote Already Submitted</CardTitle>
+            </div>
+        </CardHeader>
+        <CardContent className="p-6 text-center">
+          <p className="text-lg text-foreground mb-6">
+            You have already cast your vote for "{ballot.title}". Thank you for your participation!
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Button asChild variant="outline">
+              <Link href="/dashboard">Return to Dashboard</Link>
+            </Button>
+            {canViewResults && (
+              <Button asChild>
+                <Link href={`/results/${ballot.id}`}>View Results</Link>
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
   
   const handleSingleChoiceChange = (questionId: string, optionId: string) => {
     setAnswers(prev => ({ ...prev, [questionId]: [optionId] }));
-    setSubmissionError(null); // Clear error on interaction
+    setSubmissionError(null); 
   };
 
   const handleMultipleChoiceChange = (questionId: string, optionId: string, checked: boolean | 'indeterminate') => {
@@ -54,7 +99,7 @@ export function VotingInterface({ ballot, user }: VotingInterfaceProps) {
         return { ...prev, [questionId]: currentOptions.filter(id => id !== optionId) };
       }
     });
-    setSubmissionError(null); // Clear error on interaction
+    setSubmissionError(null);
   };
 
   const handleSubmit = async (event: FormEvent) => {
@@ -62,7 +107,22 @@ export function VotingInterface({ ballot, user }: VotingInterfaceProps) {
     setIsLoading(true);
     setSubmissionError(null);
 
-    // Validation: ensure all questions are answered
+    // Double check if user has voted before submission (e.g., if multiple tabs are open)
+    if (user.role === 'voter') { // Only re-check for voters
+        const existingVoteCheck = mockVotes.find(v => v.ballotId === ballot.id && v.voterId === user.id);
+        if (existingVoteCheck) {
+            setHasVoted(true);
+            setIsLoading(false);
+            toast({
+                title: "Already Voted",
+                description: "Your vote has already been recorded for this ballot.",
+                variant: "destructive"
+            });
+            return;
+        }
+    }
+
+
     for (const question of ballot.questions) {
       if (!answers[question.id] || answers[question.id].length === 0) {
         const errorMessage = `Please answer all questions. Question "${question.text}" is unanswered.`;
@@ -73,7 +133,6 @@ export function VotingInterface({ ballot, user }: VotingInterfaceProps) {
           description: `Please answer: "${question.text}".`,
           variant: "destructive",
         });
-        // Focus on the first unanswered question (enhancement)
         const firstUnansweredFieldset = document.getElementById(`fieldset-${question.id}`);
         if (firstUnansweredFieldset) firstUnansweredFieldset.focus();
         return;
@@ -92,12 +151,11 @@ export function VotingInterface({ ballot, user }: VotingInterfaceProps) {
     };
 
     console.log("Submitting vote:", newVote);
-    // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1200)); 
     
-    // In a real app, this would be an API call to save the vote.
-    // For demo, add to mockVotes. This won't persist across page reloads unless mock-data is updated to handle it.
-    // mockVotes.push(newVote); // This is problematic if mockVotes is not mutable or stateful. For demo, we'll assume it's logged.
+    // Add to mockVotes for this session to enable the "already voted" check
+    mockVotes.push(newVote); 
+    setHasVoted(true); // Mark as voted for the current session
 
     setIsLoading(false);
 
@@ -140,6 +198,8 @@ export function VotingInterface({ ballot, user }: VotingInterfaceProps) {
     }
   };
 
+  // If admin has "voted" (for testing), still show them the interface
+  // The `hasVoted` check above only restricts voters.
   return (
     <Card className="w-full max-w-3xl mx-auto shadow-xl my-8 border-primary/20 transform transition-all hover:shadow-2xl">
       <CardHeader className="bg-gradient-to-br from-primary/5 via-background to-background p-6 rounded-t-lg">
@@ -148,6 +208,15 @@ export function VotingInterface({ ballot, user }: VotingInterfaceProps) {
             <CardTitle className="text-3xl md:text-4xl font-bold text-primary">{ballot.title}</CardTitle>
         </div>
         <CardDescription className="text-base text-muted-foreground leading-relaxed">{ballot.description}</CardDescription>
+         {user.role === 'admin' && hasVoted && (
+          <Alert variant="default" className="mt-4 bg-blue-50 border-blue-300">
+            <Info className="h-5 w-5 text-blue-600" />
+            <AlertTitle className="text-blue-700">Admin Note</AlertTitle>
+            <AlertDescription className="text-blue-600">
+              You have previously submitted a test vote for this ballot. You can submit another to overwrite (for demo purposes). Voters can only vote once.
+            </AlertDescription>
+          </Alert>
+        )}
       </CardHeader>
       <form onSubmit={handleSubmit}>
         <CardContent className="p-6 space-y-10">
@@ -205,10 +274,18 @@ export function VotingInterface({ ballot, user }: VotingInterfaceProps) {
           )}
         </CardContent>
         <CardFooter className="p-6 border-t mt-6">
-          <Button type="submit" className="w-full text-xl py-7 font-semibold tracking-wide" disabled={isLoading}>
+          <Button 
+            type="submit" 
+            className="w-full text-xl py-7 font-semibold tracking-wide" 
+            disabled={isLoading || (hasVoted && user.role === 'voter')} // Disable for voters if already voted
+          >
             {isLoading ? (
               <>
                 <Loader2 className="mr-3 h-6 w-6 animate-spin" /> Processing Your Vote...
+              </>
+            ) : (hasVoted && user.role === 'voter') ? (
+              <>
+                <CheckCircle2 className="mr-3 h-6 w-6" /> Vote Submitted
               </>
             ) : (
               <>
@@ -221,3 +298,4 @@ export function VotingInterface({ ballot, user }: VotingInterfaceProps) {
     </Card>
   );
 }
+
