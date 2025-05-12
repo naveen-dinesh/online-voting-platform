@@ -8,7 +8,7 @@ import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form"; // Added FormDescription
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Loader2, Lightbulb, FileText, ListChecks, SearchCheck, Info, Wand2 } from "lucide-react";
 import { analyzeVoterTrends } from "@/ai/flows/analyze-voter-trends";
@@ -189,3 +189,4 @@ export function VoterAnalysisTool() {
     </div>
   );
 }
+

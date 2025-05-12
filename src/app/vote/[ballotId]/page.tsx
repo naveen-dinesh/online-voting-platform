@@ -10,9 +10,12 @@ import { AlertTriangle, Loader2, Frown } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import React from "react"; // Import React for React.use
 
 export default function VotePage() {
   const routeParams = useParams<{ ballotId: string }>();
+  // It's good practice to ensure routeParams is not null or undefined if that's possible,
+  // though useParams in app router usually returns an object.
   const ballotId = routeParams?.ballotId;
 
   const { user, loading: authLoading } = useAuth();

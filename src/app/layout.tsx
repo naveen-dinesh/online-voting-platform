@@ -1,7 +1,7 @@
 
 import type { Metadata } from 'next';
 import { GeistSans } from 'geist/font/sans';
-import { GeistMono } from 'geist/font/mono';
+// import { GeistMono } from 'geist/font/mono'; // Removed as it's not found and not essential for now
 import './globals.css';
 import { AuthProvider } from '@/contexts/auth-context';
 import { SiteHeader } from '@/components/site-header';
@@ -26,7 +26,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${GeistSans.variable} ${GeistMono.variable}`}>
+    <html lang="en" suppressHydrationWarning className={`${GeistSans.variable}`}> {/* Removed GeistMono variable */}
       <body 
         className={cn(
           "min-h-screen bg-background font-sans antialiased"
@@ -44,3 +44,4 @@ export default function RootLayout({
     </html>
   );
 }
+
