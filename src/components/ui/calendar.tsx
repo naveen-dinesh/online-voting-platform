@@ -1,11 +1,15 @@
+
 "use client"
 
 import * as React from "react"
 import { ChevronLeft, ChevronRight } from "lucide-react"
-import { DayPicker } from "react-day-picker"
+import { DayPicker, DropdownProps } from "react-day-picker"
 
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select" // For year/month dropdowns
+import { ScrollArea } from "@/components/ui/scroll-area" // For year dropdown scroll
+
 
 export type CalendarProps = React.ComponentProps<typeof DayPicker>
 
@@ -13,6 +17,9 @@ function Calendar({
   className,
   classNames,
   showOutsideDays = true,
+  captionLayout = "dropdown-buttons", // Enable dropdowns for month/year
+  fromYear = new Date().getFullYear() - 100, // Example: 100 years back
+  toYear = new Date().getFullYear() + 10,   // Example: 10 years forward
   ...props
 }: CalendarProps) {
   return (
@@ -23,7 +30,8 @@ function Calendar({
         months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
         month: "space-y-4",
         caption: "flex justify-center pt-1 relative items-center",
-        caption_label: "text-sm font-medium",
+        caption_label: captionLayout === "dropdown-buttons" ? "hidden" : "text-sm font-medium", // Hide default label if dropdowns are used
+        caption_dropdowns: "flex gap-2", // Style for dropdown container
         nav: "space-x-1 flex items-center",
         nav_button: cn(
           buttonVariants({ variant: "outline" }),
@@ -46,7 +54,7 @@ function Calendar({
           "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
         day_today: "bg-accent text-accent-foreground",
         day_outside:
-          "day-outside text-muted-foreground aria-selected:bg-accent/50 aria-selected:text-muted-foreground",
+          "day-outside text-muted-foreground opacity-50 aria-selected:bg-accent/50 aria-selected:text-muted-foreground aria-selected:opacity-30", // Adjusted opacity for selected outside days
         day_disabled: "text-muted-foreground opacity-50",
         day_range_middle:
           "aria-selected:bg-accent aria-selected:text-accent-foreground",
@@ -54,13 +62,44 @@ function Calendar({
         ...classNames,
       }}
       components={{
-        IconLeft: ({ className, ...props }) => (
-          <ChevronLeft className={cn("h-4 w-4", className)} {...props} />
-        ),
-        IconRight: ({ className, ...props }) => (
-          <ChevronRight className={cn("h-4 w-4", className)} {...props} />
-        ),
+        IconLeft: ({ ...props }) => <ChevronLeft className="h-4 w-4" {...props} />,
+        IconRight: ({ ...props }) => <ChevronRight className="h-4 w-4" {...props} />,
+        Dropdown: ({ value, onChange, name, caption, children }: DropdownProps) => {
+          const options = React.Children.toArray(children) as React.ReactElement<React.HTMLProps<HTMLOptionElement>>[];
+          const selected = options.find((child) => child.props.value === value);
+          const handleChange = (newValue: string) => {
+            const e = { target: { value: newValue } } as React.ChangeEvent<HTMLSelectElement>;
+            onChange?.(e);
+          };
+          return (
+            <Select
+              value={value?.toString()}
+              onValueChange={(newValue) => {
+                handleChange(newValue)
+              }}
+            >
+              <SelectTrigger className="h-7 text-xs px-2 w-[calc(var(--rdp-caption-width,0px)_+_1rem)] data-[ συγκεκριμένα=month]:grow-0 data-[ συγκεκριμένα=year]:grow">
+                <SelectValue>{selected?.props?.children}</SelectValue>
+              </SelectTrigger>
+              <SelectContent position="popper" className="max-h-48">
+                <ScrollArea className={name === 'years' ? "h-40" : ""}>
+                {options.map((option, id: number) => (
+                  <SelectItem
+                    key={`${id}-${option.props.value}`}
+                    value={option.props.value?.toString() ?? ""}
+                  >
+                    {option.props.children}
+                  </SelectItem>
+                ))}
+                </ScrollArea>
+              </SelectContent>
+            </Select>
+          );
+        },
       }}
+      captionLayout={captionLayout}
+      fromYear={fromYear}
+      toYear={toYear}
       {...props}
     />
   )

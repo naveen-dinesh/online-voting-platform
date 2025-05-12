@@ -1,3 +1,4 @@
+
 import * as React from "react"
 
 import { cn } from "@/lib/utils"
@@ -30,13 +31,14 @@ const CardHeader = React.forwardRef<
 CardHeader.displayName = "CardHeader"
 
 const CardTitle = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
+  HTMLParagraphElement, // Changed to HTMLParagraphElement for semantic correctness if it's a p tag, or use HTMLHeadingElement if it's h1-h6
+  React.HTMLAttributes<HTMLHeadingElement> // Use HTMLHeadingElement for props if it's a heading
 >(({ className, ...props }, ref) => (
-  <div
+  // Assuming CardTitle is most often a heading, use h3 for default semantics. Can be overridden by 'as' prop if using Slot.
+  <h3
     ref={ref}
     className={cn(
-      "text-2xl font-semibold leading-none tracking-tight",
+      "text-2xl font-semibold leading-none tracking-tight", // Default ShadCN style
       className
     )}
     {...props}
@@ -45,10 +47,10 @@ const CardTitle = React.forwardRef<
 CardTitle.displayName = "CardTitle"
 
 const CardDescription = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
+  HTMLParagraphElement,
+  React.HTMLAttributes<HTMLParagraphElement>
 >(({ className, ...props }, ref) => (
-  <div
+  <p
     ref={ref}
     className={cn("text-sm text-muted-foreground", className)}
     {...props}
