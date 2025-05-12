@@ -145,14 +145,7 @@ export function LoginForm({ initialRole = 'voter' }: LoginFormProps) {
           </form>
         </Form>
       </CardContent>
-      <CardFooter className="flex-col items-start pt-4">
-          <p className="mt-2 text-xs text-muted-foreground text-center w-full">
-            <strong>Demo Credentials:</strong>
-            <br /> Voter: <code className="font-mono bg-muted px-1 py-0.5 rounded">voter@example.com</code>
-            <br /> Admin: <code className="font-mono bg-muted px-1 py-0.5 rounded">admin@example.com</code>
-            <br /> Any other email will register as a new mock voter.
-          </p>
-      </CardFooter>
+      {/* Removed CardFooter with demo credentials */}
     </Card>
   );
 }
