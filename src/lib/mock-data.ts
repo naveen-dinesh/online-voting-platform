@@ -1,16 +1,17 @@
 
 import type { User, Ballot, Vote, BallotQuestion, ResultData } from '@/types';
 
-export const mockUsers: User[] = [
+// --- Initial Hardcoded Data ---
+const initialMockUsers: User[] = [
   { id: 'user-voter-01', email: 'voter@example.com', role: 'voter', isVerified: true, name: 'Jane Voter', password: 'Voter123' },
-  { id: 'user-admin-01', email: 'admin@example.com', role: 'admin', isVerified: true, name: 'John Admin', password: 'Password123' }, // Existing admin with a generic password
-  { id: 'user-admin-02', email: 'admin@admin.com', role: 'admin', isVerified: true, name: 'Super Admin', password: 'Admin123' }, // New admin as per request
+  { id: 'user-admin-01', email: 'admin@example.com', role: 'admin', isVerified: true, name: 'John Admin', password: 'Password123' },
+  { id: 'user-admin-02', email: 'admin@admin.com', role: 'admin', isVerified: true, name: 'Super Admin', password: 'Admin123' },
   { id: 'user-voter-02', email: 'another.voter@example.com', role: 'voter', isVerified: true, name: 'Alex Smith', password: 'Password123' },
   { id: 'user-unverified-01', email: 'unverified.user@example.com', role: 'voter', isVerified: false, name: 'Unverified Test', password: 'Password123' },
   { id: 'user-voter-03', email: 'user@user.com', role: 'voter', isVerified: true, name: 'Test User', password: 'User123' },
 ];
 
-const sampleQuestions: BallotQuestion[] = [
+const initialSampleQuestions: BallotQuestion[] = [
   {
     id: 'q1-annual-election',
     text: 'Choose your preferred candidate for Team Lead:',
@@ -33,16 +34,16 @@ const sampleQuestions: BallotQuestion[] = [
   },
 ];
 
-export const mockBallots: Ballot[] = [
+const initialMockBallots: Ballot[] = [
   {
     id: 'ballot-active-01',
     title: 'Annual Company Leadership Election',
     description: 'Elect the new team lead and vote on important company policy initiatives for the upcoming year.',
-    questions: sampleQuestions,
+    questions: initialSampleQuestions, // Use the defined sample questions
     createdBy: 'user-admin-01',
     createdAt: new Date('2024-07-01T10:00:00Z').toISOString(),
     startDate: new Date('2024-07-15T00:00:00Z').toISOString(),
-    endDate: new Date('2024-08-15T23:59:59Z').toISOString(), // Make sure this is in the future from "now" for testing
+    endDate: new Date('2024-08-15T23:59:59Z').toISOString(),
     status: 'active',
   },
   {
@@ -65,7 +66,7 @@ export const mockBallots: Ballot[] = [
     createdBy: 'user-admin-01',
     createdAt: new Date('2024-07-10T14:00:00Z').toISOString(),
     startDate: new Date('2024-07-20T00:00:00Z').toISOString(),
-    endDate: new Date('2024-08-20T23:59:59Z').toISOString(), // Also in the future
+    endDate: new Date('2024-08-20T23:59:59Z').toISOString(),
     status: 'active',
   },
   {
@@ -94,21 +95,7 @@ export const mockBallots: Ballot[] = [
   },
 ];
 
-// Initialize endDate for active ballots to be in the future for demo purposes
-const today = new Date();
-mockBallots.forEach(ballot => {
-  if (ballot.status === 'active') {
-    const startDate = new Date(today);
-    startDate.setDate(today.getDate() - 5); // Started 5 days ago
-    const endDate = new Date(today);
-    endDate.setDate(today.getDate() + 10); // Ends 10 days from now
-    ballot.startDate = startDate.toISOString();
-    ballot.endDate = endDate.toISOString();
-  }
-});
-
-
-export const mockVotes: Vote[] = [
+const initialMockVotes: Vote[] = [
   // Votes for ballot-active-01
   {
     id: 'vote-001', ballotId: 'ballot-active-01', voterId: 'user-voter-01',
@@ -126,9 +113,8 @@ export const mockVotes: Vote[] = [
     ],
     submittedAt: new Date('2024-07-17T11:00:00Z').toISOString(),
   },
-   // More votes for ballot-active-01 to make results interesting
   {
-    id: 'vote-003', ballotId: 'ballot-active-01', voterId: 'mock-voter-3',
+    id: 'vote-003', ballotId: 'ballot-active-01', voterId: 'mock-voter-3', // Generic mock voter ID
     answers: [
       { questionId: 'q1-annual-election', selectedOptionIds: ['q1o1'] },
       { questionId: 'q2-policy-initiatives', selectedOptionIds: ['q2o1', 'q2o2'] },
@@ -136,14 +122,13 @@ export const mockVotes: Vote[] = [
     submittedAt: new Date('2024-07-18T09:30:00Z').toISOString(),
   },
   {
-    id: 'vote-004', ballotId: 'ballot-active-01', voterId: 'mock-voter-4',
+    id: 'vote-004', ballotId: 'ballot-active-01', voterId: 'mock-voter-4', // Generic mock voter ID
     answers: [
       { questionId: 'q1-annual-election', selectedOptionIds: ['q1o3'] },
       { questionId: 'q2-policy-initiatives', selectedOptionIds: ['q2o3'] },
     ],
     submittedAt: new Date('2024-07-19T14:15:00Z').toISOString(),
   },
-
   // Votes for ballot-closed-01
   {
     id: 'vote-005', ballotId: 'ballot-closed-01', voterId: 'user-voter-01',
@@ -166,8 +151,103 @@ export const mockVotes: Vote[] = [
     submittedAt: new Date('2024-01-14T11:00:00Z').toISOString(),
   },
 ];
+// --- End Initial Hardcoded Data ---
 
-// Function to generate mock results for a ballot
+// --- localStorage Helper ---
+function loadFromLocalStorage<T>(key: string, defaultValue: T): T {
+  if (typeof window !== 'undefined') {
+    try {
+      const storedValue = localStorage.getItem(key);
+      if (storedValue) {
+        return JSON.parse(storedValue) as T;
+      }
+    } catch (error) {
+      console.error(`Error loading ${key} from localStorage:`, error);
+      localStorage.removeItem(key); // Clear corrupted data
+    }
+  }
+  return defaultValue;
+}
+
+function saveToLocalStorage<T>(key: string, value: T): void {
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+    } catch (error) {
+      console.error(`Error saving ${key} to localStorage:`, error);
+    }
+  }
+}
+// --- End localStorage Helper ---
+
+// --- Exported Data (Potentially from localStorage) ---
+export let mockUsers: User[] = initialMockUsers; // Users are static for this demo
+
+let loadedMockBallots = loadFromLocalStorage<Ballot[]>('votewiseMockBallots', initialMockBallots);
+const todayMs = new Date().getTime();
+
+loadedMockBallots.forEach(ballot => {
+  if (ballot.status === 'active') {
+    const endDateMs = new Date(ballot.endDate).getTime();
+    const startDateMs = new Date(ballot.startDate).getTime();
+    // If end date is past, or if start date is significantly in the future (more than a day from now),
+    // then adjust dates to make it currently active for demo purposes.
+    if (endDateMs < todayMs || startDateMs > todayMs + (24 * 60 * 60 * 1000)) {
+        const newStartDate = new Date();
+        newStartDate.setDate(newStartDate.getDate() - 2); // Set start to 2 days ago
+        newStartDate.setHours(0,0,0,0); // Set time to beginning of the day
+
+        const newEndDate = new Date();
+        newEndDate.setDate(newEndDate.getDate() + 7); // Set end to 7 days from now
+        newEndDate.setHours(23,59,59,999); // Set time to end of the day
+
+        ballot.startDate = newStartDate.toISOString();
+        ballot.endDate = newEndDate.toISOString();
+    }
+  }
+});
+export let mockBallots: Ballot[] = loadedMockBallots;
+
+export let mockVotes: Vote[] = loadFromLocalStorage<Vote[]>('votewiseMockVotes', initialMockVotes);
+// --- End Exported Data ---
+
+// --- Functions to update and save data ---
+export function addBallot(newBallot: Ballot): void {
+  // Ensure new active ballots have valid future end dates relative to their start date
+  if (newBallot.status === 'active') {
+    const startDate = new Date(newBallot.startDate);
+    let endDate = new Date(newBallot.endDate);
+    if (endDate <= startDate) {
+        endDate = new Date(startDate);
+        endDate.setDate(startDate.getDate() + 7); // Default to 7 days duration if end date is invalid
+        newBallot.endDate = endDate.toISOString();
+    }
+  }
+  mockBallots.unshift(newBallot);
+  saveToLocalStorage('votewiseMockBallots', mockBallots);
+}
+
+export function addVote(newVote: Vote): void {
+  const existingVoteIndex = mockVotes.findIndex(
+    v => v.ballotId === newVote.ballotId && v.voterId === newVote.voterId
+  );
+
+  const userTryingToVote = mockUsers.find(u => u.id === newVote.voterId);
+
+  if (existingVoteIndex !== -1) {
+    if (userTryingToVote && userTryingToVote.role === 'voter') {
+      throw new Error("ALREADY_VOTED");
+    }
+    // Admin or test user overwrites their previous vote
+    mockVotes[existingVoteIndex] = newVote;
+    console.log(`Admin or test user ${newVote.voterId} overwrote vote for ballot ${newVote.ballotId}.`);
+  } else {
+    mockVotes.push(newVote);
+  }
+  saveToLocalStorage('votewiseMockVotes', mockVotes);
+}
+// --- End Functions to update and save data ---
+
 export const getMockResults = (ballotId: string): ResultData[] => {
   const ballot = mockBallots.find(b => b.id === ballotId);
   if (!ballot) return [];
@@ -190,7 +270,6 @@ export const getMockResults = (ballotId: string): ResultData[] => {
   });
 };
 
-// Mock anonymized data for AI analysis
 export const mockAnonymizedVoterData = JSON.stringify(
   {
     total_verified_voters: 485,
@@ -212,3 +291,20 @@ export const mockAnonymizedVoterData = JSON.stringify(
   }, null, 2
 );
 
+// Initial save to localStorage if empty, or to ensure data integrity after code changes
+if (typeof window !== 'undefined') {
+  const storedBallots = localStorage.getItem('votewiseMockBallots');
+  if (!storedBallots) {
+    saveToLocalStorage('votewiseMockBallots', mockBallots);
+  } else {
+    // If there are stored ballots, we assume they are more up-to-date than initialMockBallots,
+    // but we still apply the date adjustments to the loaded data.
+    // The `mockBallots` variable is already updated with loaded and adjusted data.
+    // We can re-save it to ensure the adjusted dates are persisted if they changed.
+    saveToLocalStorage('votewiseMockBallots', mockBallots);
+  }
+  
+  if (!localStorage.getItem('votewiseMockVotes')) {
+    saveToLocalStorage('votewiseMockVotes', initialMockVotes); // Use initialMockVotes here if localStorage is empty
+  }
+}

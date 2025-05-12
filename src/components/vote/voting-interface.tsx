@@ -12,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { AlertCircle, CheckCircle2, Loader2, Send, Info, VoteIcon } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { mockVotes } from "@/lib/mock-data"; 
+import { mockVotes, addVote, mockUsers } from "@/lib/mock-data"; // Updated import
 import { isFuture, parseISO } from 'date-fns';
 import Link from "next/link";
 
@@ -33,7 +33,7 @@ export function VotingInterface({ ballot, user }: VotingInterfaceProps) {
   useEffect(() => {
     if (user && ballot) {
       setCheckingVoteStatus(true);
-      // Simulate checking if the user has already voted
+      // Check if the user has already voted using the potentially localStorage-loaded mockVotes
       const existingVote = mockVotes.find(v => v.ballotId === ballot.id && v.voterId === user.id);
       setHasVoted(!!existingVote);
       setCheckingVoteStatus(false);
@@ -56,7 +56,9 @@ export function VotingInterface({ ballot, user }: VotingInterfaceProps) {
     );
   }
 
-  if (hasVoted && user.role === 'voter') { // Admin can still see interface to 'vote' (submit for testing, maybe)
+  const currentUser = mockUsers.find(u => u.id === user.id); // Get full user object for role check
+
+  if (hasVoted && currentUser?.role === 'voter') { 
     const canViewResults = ballot.status === 'closed' || (ballot.status === 'active' && !isFuture(parseISO(ballot.endDate)));
     return (
       <Card className="w-full max-w-2xl mx-auto shadow-xl my-8 border-accent/30">
@@ -107,22 +109,6 @@ export function VotingInterface({ ballot, user }: VotingInterfaceProps) {
     setIsLoading(true);
     setSubmissionError(null);
 
-    // Double check if user has voted before submission (e.g., if multiple tabs are open)
-    if (user.role === 'voter') { // Only re-check for voters
-        const existingVoteCheck = mockVotes.find(v => v.ballotId === ballot.id && v.voterId === user.id);
-        if (existingVoteCheck) {
-            setHasVoted(true);
-            setIsLoading(false);
-            toast({
-                title: "Already Voted",
-                description: "Your vote has already been recorded for this ballot.",
-                variant: "destructive"
-            });
-            return;
-        }
-    }
-
-
     for (const question of ballot.questions) {
       if (!answers[question.id] || answers[question.id].length === 0) {
         const errorMessage = `Please answer all questions. Question "${question.text}" is unanswered.`;
@@ -153,53 +139,69 @@ export function VotingInterface({ ballot, user }: VotingInterfaceProps) {
     console.log("Submitting vote:", newVote);
     await new Promise(resolve => setTimeout(resolve, 1200)); 
     
-    // Add to mockVotes for this session to enable the "already voted" check
-    mockVotes.push(newVote); 
-    setHasVoted(true); // Mark as voted for the current session
+    try {
+      addVote(newVote); // Use imported function; this will throw if voter already voted
+      setHasVoted(true); // Mark as voted for the current session
 
-    setIsLoading(false);
+      const ballotIsEffectivelyActive = ballot.status === 'active' && isFuture(parseISO(ballot.endDate));
 
-    const ballotIsEffectivelyActive = ballot.status === 'active' && isFuture(parseISO(ballot.endDate));
-
-    if (user.role === 'admin') { 
-      toast({
-        title: "Vote Submitted Successfully! (Admin Action)",
-        description: `Viewing results for "${ballot.title}".`,
-        variant: "default",
-        duration: 5000,
-      });
-      router.push(`/results/${ballot.id}`);
-    } else if (user.role === 'voter') {
-      if (ballotIsEffectivelyActive) {
+      if (currentUser?.role === 'admin') { 
         toast({
-          title: "Vote Submitted Successfully!",
-          description: `Thank you for your participation. Results for "${ballot.title}" will be available after the ballot closes.`,
-          variant: "default",
-          duration: 6000,
-        });
-        router.push('/dashboard'); 
-      } else { 
-        toast({
-          title: "Vote Submitted Successfully!",
-          description: `Thank you for your participation. Viewing results for "${ballot.title}".`,
+          title: "Vote Submitted Successfully! (Admin Action)",
+          description: `Viewing results for "${ballot.title}".`,
           variant: "default",
           duration: 5000,
-          action: (
-            <Button variant="outline" size="sm" onClick={() => router.push(`/results/${ballot.id}`)}>
-              View Results
-            </Button>
-          )
         });
         router.push(`/results/${ballot.id}`);
+      } else if (currentUser?.role === 'voter') {
+        if (ballotIsEffectivelyActive) {
+          toast({
+            title: "Vote Submitted Successfully!",
+            description: `Thank you for your participation. Results for "${ballot.title}" will be available after the ballot closes.`,
+            variant: "default",
+            duration: 6000,
+          });
+          router.push('/dashboard'); 
+        } else { 
+          toast({
+            title: "Vote Submitted Successfully!",
+            description: `Thank you for your participation. Viewing results for "${ballot.title}".`,
+            variant: "default",
+            duration: 5000,
+            action: (
+              <Button variant="outline" size="sm" onClick={() => router.push(`/results/${ballot.id}`)}>
+                View Results
+              </Button>
+            )
+          });
+          router.push(`/results/${ballot.id}`);
+        }
+      } else { 
+          toast({title: "Vote Submitted!", description: "Redirecting to dashboard."});
+          router.push('/dashboard');
       }
-    } else { 
-        toast({title: "Vote Submitted!", description: "Redirecting to dashboard."});
-        router.push('/dashboard');
+    } catch (e: any) {
+      if (e.message === "ALREADY_VOTED") {
+        setHasVoted(true); // Ensure UI reflects this state
+        toast({
+          title: "Already Voted",
+          description: "Your vote has already been recorded for this ballot.",
+          variant: "destructive"
+        });
+      } else {
+        console.error("Submission error:", e);
+        setSubmissionError(e.message || "An unexpected error occurred during submission.");
+        toast({
+          title: "Submission Error",
+          description: e.message || "Failed to submit your vote. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // If admin has "voted" (for testing), still show them the interface
-  // The `hasVoted` check above only restricts voters.
   return (
     <Card className="w-full max-w-3xl mx-auto shadow-xl my-8 border-primary/20 transform transition-all hover:shadow-2xl">
       <CardHeader className="bg-gradient-to-br from-primary/5 via-background to-background p-6 rounded-t-lg">
@@ -208,12 +210,12 @@ export function VotingInterface({ ballot, user }: VotingInterfaceProps) {
             <CardTitle className="text-3xl md:text-4xl font-bold text-primary">{ballot.title}</CardTitle>
         </div>
         <CardDescription className="text-base text-muted-foreground leading-relaxed">{ballot.description}</CardDescription>
-         {user.role === 'admin' && hasVoted && (
+         {currentUser?.role === 'admin' && hasVoted && (
           <Alert variant="default" className="mt-4 bg-blue-50 border-blue-300">
             <Info className="h-5 w-5 text-blue-600" />
             <AlertTitle className="text-blue-700">Admin Note</AlertTitle>
             <AlertDescription className="text-blue-600">
-              You have previously submitted a test vote for this ballot. You can submit another to overwrite (for demo purposes). Voters can only vote once.
+              You have previously submitted a test vote for this ballot. Submitting again will overwrite your previous test vote. Voters can only vote once.
             </AlertDescription>
           </Alert>
         )}
@@ -277,13 +279,13 @@ export function VotingInterface({ ballot, user }: VotingInterfaceProps) {
           <Button 
             type="submit" 
             className="w-full text-xl py-7 font-semibold tracking-wide" 
-            disabled={isLoading || (hasVoted && user.role === 'voter')} // Disable for voters if already voted
+            disabled={isLoading || (hasVoted && currentUser?.role === 'voter')} 
           >
             {isLoading ? (
               <>
                 <Loader2 className="mr-3 h-6 w-6 animate-spin" /> Processing Your Vote...
               </>
-            ) : (hasVoted && user.role === 'voter') ? (
+            ) : (hasVoted && currentUser?.role === 'voter') ? (
               <>
                 <CheckCircle2 className="mr-3 h-6 w-6" /> Vote Submitted
               </>

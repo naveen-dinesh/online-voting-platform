@@ -27,7 +27,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { Ballot } from "@/types";
-import { mockBallots } from "@/lib/mock-data";
+import { addBallot } from "@/lib/mock-data"; // Updated import
 import { useAuth } from "@/contexts/auth-context";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -82,8 +82,21 @@ export function BallotCreationForm() {
     
     // Simulate API call & ballot creation
     await new Promise(resolve => setTimeout(resolve, 1500));
+    
+    // Determine ballot status based on dates
+    const now = new Date();
+    let status: Ballot['status'] = 'draft'; // Default to draft
+    if (values.startDate <= now && values.endDate >= now) {
+      status = 'active';
+    } else if (values.endDate < now) {
+      status = 'closed';
+    }
+    // If startDate is in the future, it will remain 'draft' or could be 'upcoming' if we add that status.
+    // For simplicity, new ballots are 'draft' if not immediately active.
+    // However, if dates make it active, set to 'active'.
+
     const newBallot: Ballot = {
-        id: `ballot-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`, // More unique ID
+        id: `ballot-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
         ...values,
         startDate: values.startDate.toISOString(),
         endDate: values.endDate.toISOString(),
@@ -95,21 +108,18 @@ export function BallotCreationForm() {
                 id: `q${qIdx+1}o${oIdx+1}-${Date.now()}`
             }))
         })),
-        createdBy: user?.id || 'admin-unknown', // Should always be an admin user
+        createdBy: user?.id || 'admin-unknown',
         createdAt: new Date().toISOString(),
-        status: 'draft', // New ballots are created as drafts
+        status: status,
     };
     
-    // This is a mock addition. In a real app, this would be an API call.
-    // For the purpose of this demo, we'll push to the mockBallots array.
-    // This change won't persist if the page is reloaded unless mock-data.ts is designed to be stateful or data is stored elsewhere.
-    mockBallots.unshift(newBallot); 
-    console.log("New ballot created (mock):", newBallot);
+    addBallot(newBallot); // Use the imported function to add and save to localStorage
+    console.log("New ballot created and saved to localStorage (mock):", newBallot);
 
     setIsLoading(false);
     toast({
       title: "Ballot Created Successfully!",
-      description: `"${values.title}" has been saved as a draft. You can activate it from the management panel.`,
+      description: `"${values.title}" has been saved with status: ${status}.`,
       variant: "default",
       duration: 5000,
     });
@@ -158,7 +168,7 @@ export function BallotCreationForm() {
                     name="startDate"
                     render={({ field }) => (
                     <FormItem className="flex flex-col">
-                        <FormLabel className="text-lg font-semibold">Voting Start Date</FormLabel>
+                        <FormLabel className="text-lg font-semibold">Voting Start Date & Time</FormLabel>
                         <Popover>
                         <PopoverTrigger asChild>
                             <FormControl>
@@ -176,12 +186,39 @@ export function BallotCreationForm() {
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0" align="start">
                             <Calendar
-                            mode="single"
-                            selected={field.value}
-                            onSelect={(date) => field.onChange(date ? new Date(date.setHours(0,0,0,0)) : undefined)} // Default time or allow time picker
-                            disabled={(date) => date < new Date(new Date().setDate(new Date().getDate() -1)) } 
-                            initialFocus
+                                mode="single"
+                                selected={field.value}
+                                onSelect={(date) => {
+                                    // When a date is picked, preserve existing time or default to 00:00
+                                    const newDate = date ? new Date(date) : undefined;
+                                    if (newDate) {
+                                        const hours = field.value?.getHours() ?? 0;
+                                        const minutes = field.value?.getMinutes() ?? 0;
+                                        newDate.setHours(hours, minutes, 0, 0);
+                                    }
+                                    field.onChange(newDate);
+                                }}
+                                disabled={(date) => date < new Date(new Date().setDate(new Date().getDate() -1)) } // Allow today
+                                initialFocus
                             />
+                            {/* Optional: Add Time Picker here if needed */}
+                            <div className="p-2 border-t">
+                                <Input 
+                                    type="time"
+                                    className="w-full"
+                                    value={field.value ? format(field.value, "HH:mm") : ""}
+                                    onChange={(e) => {
+                                        const timeParts = e.target.value.split(':');
+                                        const hours = parseInt(timeParts[0], 10);
+                                        const minutes = parseInt(timeParts[1], 10);
+                                        const newDateWithTime = field.value ? new Date(field.value) : new Date();
+                                        if (!isNaN(hours) && !isNaN(minutes)) {
+                                            newDateWithTime.setHours(hours, minutes, 0, 0);
+                                            field.onChange(newDateWithTime);
+                                        }
+                                    }}
+                                />
+                            </div>
                         </PopoverContent>
                         </Popover>
                         <FormMessage />
@@ -193,7 +230,7 @@ export function BallotCreationForm() {
                     name="endDate"
                     render={({ field }) => (
                     <FormItem className="flex flex-col">
-                        <FormLabel className="text-lg font-semibold">Voting End Date</FormLabel>
+                        <FormLabel className="text-lg font-semibold">Voting End Date & Time</FormLabel>
                         <Popover>
                         <PopoverTrigger asChild>
                             <FormControl>
@@ -211,12 +248,37 @@ export function BallotCreationForm() {
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0" align="start">
                             <Calendar
-                            mode="single"
-                            selected={field.value}
-                            onSelect={(date) => field.onChange(date ? new Date(date.setHours(23,59,59,999)) : undefined)}
-                            disabled={(date) => date < (form.getValues("startDate") || new Date(new Date().setDate(new Date().getDate() -1)))}
-                            initialFocus
+                                mode="single"
+                                selected={field.value}
+                                onSelect={(date) => {
+                                     const newDate = date ? new Date(date) : undefined;
+                                    if (newDate) {
+                                        const hours = field.value?.getHours() ?? 23;
+                                        const minutes = field.value?.getMinutes() ?? 59;
+                                        newDate.setHours(hours, minutes, 59, 999);
+                                    }
+                                    field.onChange(newDate);
+                                }}
+                                disabled={(date) => date < (form.getValues("startDate") || new Date(new Date().setDate(new Date().getDate())))} // Allow same day as start or future
+                                initialFocus
                             />
+                             <div className="p-2 border-t">
+                                <Input 
+                                    type="time"
+                                    className="w-full"
+                                    value={field.value ? format(field.value, "HH:mm") : ""}
+                                     onChange={(e) => {
+                                        const timeParts = e.target.value.split(':');
+                                        const hours = parseInt(timeParts[0], 10);
+                                        const minutes = parseInt(timeParts[1], 10);
+                                        const newDateWithTime = field.value ? new Date(field.value) : new Date();
+                                         if (!isNaN(hours) && !isNaN(minutes)) {
+                                            newDateWithTime.setHours(hours, minutes, 59, 999); // Ensure seconds are set to 59 for end time
+                                            field.onChange(newDateWithTime);
+                                        }
+                                    }}
+                                />
+                            </div>
                         </PopoverContent>
                         </Popover>
                         <FormMessage />
@@ -382,3 +444,4 @@ function OptionsArray({ questionIndex, control, form }: { questionIndex: number;
     </div>
   );
 }
+
