@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useParams } from 'next/navigation';
@@ -74,7 +73,7 @@ export default function VotePage() {
 
 
   return (
-    <ProtectedRoute allowedRoles={['voter']}>
+    <ProtectedRoute allowedRoles={['voter', 'admin']}> {/* Updated to include 'admin' */}
       <div className="container mx-auto py-8 px-4">
         <VotingInterface ballot={ballot} user={user} />
       </div>
