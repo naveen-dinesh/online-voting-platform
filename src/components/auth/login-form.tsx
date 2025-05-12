@@ -15,15 +15,16 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/auth-context";
-import { useRouter } from "next/navigation"; // Removed useSearchParams as initialRole is passed as prop
+import { useRouter } from "next/navigation"; 
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Mail, ShieldEllipsis, Loader2, LogIn, UserCheck2 } from "lucide-react";
+import { Mail, ShieldEllipsis, Loader2, LogIn, UserCheck2, KeyRound } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address." }),
+  password: z.string().min(1, { message: "Password is required." }),
 });
 
 type LoginFormProps = {
@@ -37,7 +38,6 @@ export function LoginForm({ initialRole = 'voter' }: LoginFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedRole, setSelectedRole] = useState<'voter' | 'admin'>(initialRole);
 
-  // Update selectedRole if initialRole prop changes (e.g., due to query param)
   useEffect(() => {
     setSelectedRole(initialRole);
   }, [initialRole]);
@@ -46,13 +46,14 @@ export function LoginForm({ initialRole = 'voter' }: LoginFormProps) {
     resolver: zodResolver(formSchema),
     defaultValues: {
       email: "",
+      password: "",
     },
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
-      const user = await login(values.email, selectedRole);
+      const user = await login(values.email, values.password, selectedRole);
       if (user) {
         toast({
           title: "Login Successful!",
@@ -67,7 +68,7 @@ export function LoginForm({ initialRole = 'voter' }: LoginFormProps) {
       } else {
         toast({
           title: "Login Failed",
-          description: "Invalid email for the selected role, or user not found. Please check your credentials and try again.",
+          description: "Invalid email, password, or role. Please check your credentials and try again.",
           variant: "destructive",
         });
       }
@@ -117,15 +118,38 @@ export function LoginForm({ initialRole = 'voter' }: LoginFormProps) {
                       <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                       <Input 
                         type="email" 
-                        placeholder={selectedRole === 'admin' ? "admin@example.com" : "voter@example.com"}
+                        placeholder={selectedRole === 'admin' ? "admin@admin.com" : "voter@example.com"}
                         {...field} 
-                        className="pl-12 py-6 text-base" // Increased padding and height
+                        className="pl-12 py-6 text-base"
                         aria-describedby="email-error"
                         autoComplete="email"
                       />
                     </div>
                   </FormControl>
                   <FormMessage id="email-error" />
+                </FormItem>
+              )}
+            />
+             <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-base">Password</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                      <Input 
+                        type="password" 
+                        placeholder="••••••••" 
+                        {...field} 
+                        className="pl-12 py-6 text-base"
+                        aria-describedby="password-error"
+                        autoComplete="current-password"
+                      />
+                    </div>
+                  </FormControl>
+                  <FormMessage id="password-error" />
                 </FormItem>
               )}
             />
@@ -138,14 +162,14 @@ export function LoginForm({ initialRole = 'voter' }: LoginFormProps) {
               ) : (
                 <>
                   <LogIn className="mr-2 h-5 w-5" />
-                  {selectedRole === 'admin' ? 'Login as Admin' : 'Login / Register as Voter'}
+                  {selectedRole === 'admin' ? 'Login as Admin' : 'Login as Voter'}
                 </>
               )}
             </Button>
           </form>
         </Form>
       </CardContent>
-      {/* Removed CardFooter with demo credentials */}
     </Card>
   );
 }
+

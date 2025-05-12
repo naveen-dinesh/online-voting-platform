@@ -2,10 +2,11 @@
 import type { User, Ballot, Vote, BallotQuestion, ResultData } from '@/types';
 
 export const mockUsers: User[] = [
-  { id: 'user-voter-01', email: 'voter@example.com', role: 'voter', isVerified: true, name: 'Jane Voter' },
-  { id: 'user-admin-01', email: 'admin@example.com', role: 'admin', isVerified: true, name: 'John Admin' },
-  { id: 'user-voter-02', email: 'another.voter@example.com', role: 'voter', isVerified: true, name: 'Alex Smith' },
-  { id: 'user-unverified-01', email: 'unverified.user@example.com', role: 'voter', isVerified: false, name: 'Unverified Test' },
+  { id: 'user-voter-01', email: 'voter@example.com', role: 'voter', isVerified: true, name: 'Jane Voter', password: 'Voter123' },
+  { id: 'user-admin-01', email: 'admin@example.com', role: 'admin', isVerified: true, name: 'John Admin', password: 'Password123' }, // Existing admin with a generic password
+  { id: 'user-admin-02', email: 'admin@admin.com', role: 'admin', isVerified: true, name: 'Super Admin', password: 'Admin123' }, // New admin as per request
+  { id: 'user-voter-02', email: 'another.voter@example.com', role: 'voter', isVerified: true, name: 'Alex Smith', password: 'Password123' },
+  { id: 'user-unverified-01', email: 'unverified.user@example.com', role: 'voter', isVerified: false, name: 'Unverified Test', password: 'Password123' },
 ];
 
 const sampleQuestions: BallotQuestion[] = [
@@ -209,3 +210,4 @@ export const mockAnonymizedVoterData = JSON.stringify(
     general_feedback_summary: "Overall positive engagement, with notable interest in flexible work arrangements across departments. Candidate preferences show a competitive field, with varying support across age groups."
   }, null, 2
 );
+

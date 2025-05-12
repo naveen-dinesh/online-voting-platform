@@ -7,7 +7,7 @@ import { mockUsers } from '@/lib/mock-data'; // Using mock users
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, role?: 'voter' | 'admin') => Promise<User | null>;
+  login: (email: string, password?: string, role?: 'voter' | 'admin') => Promise<User | null>;
   logout: () => void;
   loading: boolean;
   isAdmin: boolean;
@@ -40,30 +40,32 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setLoading(false);
   }, []);
 
-  const login = async (email: string, roleFromLoginAttempt?: 'voter' | 'admin'): Promise<User | null> => {
+  const login = async (email: string, password?: string, roleFromLoginAttempt?: 'voter' | 'admin'): Promise<User | null> => {
     setLoading(true);
     // Simulate API call for login
     await new Promise(resolve => setTimeout(resolve, 500));
     
     const normalizedEmail = email.toLowerCase();
-    let foundUser = mockUsers.find(u => u.email.toLowerCase() === normalizedEmail && (!roleFromLoginAttempt || u.role === roleFromLoginAttempt));
-
-    // If user not found with specific role, but email exists with other role, and no specific role was requested for login, use first found.
-    if (!foundUser && !roleFromLoginAttempt) {
-        foundUser = mockUsers.find(u => u.email.toLowerCase() === normalizedEmail);
-    }
+    // Find user by email first
+    const foundUser = mockUsers.find(u => u.email.toLowerCase() === normalizedEmail);
 
     if (foundUser) {
-      // Ensure user is marked as verified for mock purposes if they exist in mockUsers
-      // unless explicitly set to isVerified: false in mockUsers
-      const loggedInUser = { ...foundUser, isVerified: foundUser.isVerified !== undefined ? foundUser.isVerified : true };
-      
-      // If trying to log in as admin but user is voter, or vice-versa deny, unless this specific combo exists
-      if (roleFromLoginAttempt && loggedInUser.role !== roleFromLoginAttempt) {
+      // Check password
+      if (foundUser.password !== password) {
+        setLoading(false);
+        console.warn(`Mock login: Password incorrect for ${email}.`);
+        return null;
+      }
+
+      // Check role if specified during login attempt
+      if (roleFromLoginAttempt && foundUser.role !== roleFromLoginAttempt) {
           setLoading(false);
           console.warn(`Mock login: User ${email} exists but not with role ${roleFromLoginAttempt}.`);
           return null;
       }
+      
+      // Ensure user is marked as verified for mock purposes
+      const loggedInUser = { ...foundUser, isVerified: foundUser.isVerified !== undefined ? foundUser.isVerified : true };
       
       setUser(loggedInUser);
       localStorage.setItem('voteWiseUser', JSON.stringify(loggedInUser));
@@ -71,28 +73,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return loggedInUser;
     }
     
-    // If user not found, create a mock voter user for demo purposes if role is not admin
-    // or if no role was specified (defaults to voter)
-    if (!roleFromLoginAttempt || roleFromLoginAttempt === 'voter') {
-        console.warn(`Mock login: User ${normalizedEmail} not found. Creating mock voter.`);
-        const newUser: User = {
-            id: `mock-user-${Date.now()}`,
-            email: normalizedEmail,
-            role: 'voter',
-            isVerified: true, // auto-verify for mock new users
-            name: normalizedEmail.split('@')[0] || `Voter ${Date.now().toString().slice(-4)}`,
-        };
-        setUser(newUser);
-        localStorage.setItem('voteWiseUser', JSON.stringify(newUser));
-        setLoading(false);
-        return newUser;
-    }
-
-    // If trying to login as admin and user not found
-    if (roleFromLoginAttempt === 'admin') {
-        console.warn(`Mock login: Admin user ${normalizedEmail} not found.`);
-    }
-
+    // User not found
+    console.warn(`Mock login: User ${normalizedEmail} not found.`);
     setLoading(false);
     return null;
   };
@@ -120,3 +102,4 @@ export const useAuth = (): AuthContextType => {
   }
   return context;
 };
+

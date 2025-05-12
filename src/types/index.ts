@@ -5,6 +5,7 @@ export interface User {
   role: 'voter' | 'admin';
   isVerified: boolean; // True if email is verified (mocked as true for existing users)
   name?: string; // Optional: user's name
+  password?: string; // Added for password authentication
 }
 
 export interface BallotOption {
@@ -59,3 +60,4 @@ export interface ResultData {
 // though components will directly import from the AI flow module.
 // export type { AnalyzeVoterTrendsInput as VoterAnalysisInput } from '@/ai/flows/analyze-voter-trends';
 // export type { AnalyzeVoterTrendsOutput as VoterAnalysisOutput } from '@/ai/flows/analyze-voter-trends';
+
