@@ -47,18 +47,17 @@ export function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-20 items-center"> {/* Increased height for better presence */}
-        <Link href="/" className="mr-6 flex items-center space-x-2 group">
+      <div className="container flex h-20 items-center justify-between"> {/* Changed to justify-between */}
+        <Link href="/" className="flex items-center space-x-2 group"> {/* Removed mr-6 */}
           <Vote className="h-8 w-8 text-primary transition-transform group-hover:scale-110" />
           <span className="font-bold sm:inline-block text-2xl tracking-tight">
             VoteWise
           </span>
         </Link>
         
-        {/* Future navigation links can go here */}
-        {/* <nav className="flex flex-1 items-center space-x-4"> </nav> */}
-        <div className="flex-1" />
-
+        {/* Future navigation links can go here, would be grouped with the Link above or be a separate middle group */}
+        {/* <nav className="flex items-center space-x-4"> </nav> */}
+        {/* Removed: <div className="flex-1" /> */}
 
         <div className="flex items-center space-x-3">
           {user ? (
