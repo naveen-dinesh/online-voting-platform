@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation";
 import { AlertCircle, CheckCircle2, Loader2, Send, Info } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { mockVotes } from "@/lib/mock-data"; // For simulating vote submission
+import { isFuture, parseISO } from 'date-fns';
 
 interface VotingInterfaceProps {
   ballot: Ballot;
@@ -99,18 +100,44 @@ export function VotingInterface({ ballot, user }: VotingInterfaceProps) {
     // mockVotes.push(newVote); // This is problematic if mockVotes is not mutable or stateful. For demo, we'll assume it's logged.
 
     setIsLoading(false);
-    toast({
-      title: "Vote Submitted Successfully!",
-      description: "Thank you for your participation. Your vote has been recorded.",
-      variant: "default",
-      duration: 5000,
-      action: (
-        <Button variant="outline" size="sm" onClick={() => router.push(`/results/${ballot.id}`)}>
-          View Live Results
-        </Button>
-      )
-    });
-    router.push(`/results/${ballot.id}`); // Redirect to results page after voting
+
+    const ballotIsEffectivelyActive = ballot.status === 'active' && isFuture(parseISO(ballot.endDate));
+
+    if (user.role === 'admin') { 
+      toast({
+        title: "Vote Submitted Successfully! (Admin Action)",
+        description: `Viewing results for "${ballot.title}".`,
+        variant: "default",
+        duration: 5000,
+      });
+      router.push(`/results/${ballot.id}`);
+    } else if (user.role === 'voter') {
+      if (ballotIsEffectivelyActive) {
+        toast({
+          title: "Vote Submitted Successfully!",
+          description: `Thank you for your participation. Results for "${ballot.title}" will be available after the ballot closes.`,
+          variant: "default",
+          duration: 6000,
+        });
+        router.push('/dashboard'); 
+      } else { 
+        toast({
+          title: "Vote Submitted Successfully!",
+          description: `Thank you for your participation. Viewing results for "${ballot.title}".`,
+          variant: "default",
+          duration: 5000,
+          action: (
+            <Button variant="outline" size="sm" onClick={() => router.push(`/results/${ballot.id}`)}>
+              View Results
+            </Button>
+          )
+        });
+        router.push(`/results/${ballot.id}`);
+      }
+    } else { 
+        toast({title: "Vote Submitted!", description: "Redirecting to dashboard."});
+        router.push('/dashboard');
+    }
   };
 
   return (

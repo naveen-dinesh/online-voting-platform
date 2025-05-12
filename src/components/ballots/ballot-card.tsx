@@ -5,7 +5,7 @@ import type { Ballot } from "@/types";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { CalendarDays, CheckSquare, ListChecks, BarChart3, Clock, Edit3, Info } from "lucide-react";
+import { CalendarDays, CheckSquare, ListChecks, BarChart3, Clock, Edit3, Info as InfoIcon } from "lucide-react"; // Renamed Info to InfoIcon to avoid conflict if needed
 import { Badge } from "@/components/ui/badge";
 import { format, parseISO, isPast, isFuture } from 'date-fns';
 
@@ -26,7 +26,7 @@ export function BallotCard({ ballot, userRole }: BallotCardProps) {
       return { text: 'Draft', variant: 'outline', icon: <Edit3 className="mr-1.5 h-3.5 w-3.5" /> };
     }
     if (status === 'active') {
-      if (isPast(end)) { // Should ideally be 'closed' but handle data inconsistency
+      if (isPast(end)) {
         return { text: 'Ended', variant: 'secondary', icon: <Clock className="mr-1.5 h-3.5 w-3.5" /> };
       }
       if (isFuture(start)) {
@@ -37,11 +37,22 @@ export function BallotCard({ ballot, userRole }: BallotCardProps) {
     if (status === 'closed') {
       return { text: 'Closed', variant: 'secondary', icon: <Clock className="mr-1.5 h-3.5 w-3.5" /> };
     }
-    return { text: 'Unknown', variant: 'outline', icon: <Info className="mr-1.5 h-3.5 w-3.5" /> };
+    return { text: 'Unknown', variant: 'outline', icon: <InfoIcon className="mr-1.5 h-3.5 w-3.5" /> };
   };
   
   const statusInfo = getStatusInfo(ballot.status, ballot.startDate, ballot.endDate);
-  const canVote = ballot.status === 'active' && isFuture(parseISO(ballot.endDate)) && isPast(parseISO(ballot.startDate)) && userRole === 'voter';
+  const canVote = statusInfo.text === 'Active' && userRole === 'voter'; // Simplified: if statusInfo says 'Active', it means it's within date range
+
+  let showResultsButton = false;
+  if (userRole === 'admin') {
+    // Admins can see the results button for any ballot that is not a draft
+    showResultsButton = ballot.status !== 'draft';
+  } else if (userRole === 'voter') {
+    // Voters can only see results for ballots that are 'Closed' or 'Ended'
+    if (statusInfo.text === 'Closed' || statusInfo.text === 'Ended') {
+      showResultsButton = true;
+    }
+  }
 
   return (
     <Card className="flex flex-col h-full shadow-lg hover:shadow-xl transition-shadow duration-300 ease-in-out bg-card rounded-lg overflow-hidden">
@@ -81,11 +92,13 @@ export function BallotCard({ ballot, userRole }: BallotCardProps) {
             </Link>
           </Button>
         )}
-         <Button asChild variant="outline" className="w-full sm:w-auto border-primary/50 text-primary hover:bg-primary/10 hover:text-primary" size="sm">
+         {showResultsButton && (
+          <Button asChild variant="outline" className="w-full sm:w-auto border-primary/50 text-primary hover:bg-primary/10 hover:text-primary" size="sm">
             <Link href={`/results/${ballot.id}`} aria-label={`View results for ${ballot.title}`}>
               <BarChart3 className="mr-2 h-4 w-4" /> View Results
             </Link>
           </Button>
+        )}
       </CardFooter>
     </Card>
   );

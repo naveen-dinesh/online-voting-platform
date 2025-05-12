@@ -5,42 +5,52 @@ import { useParams } from 'next/navigation';
 import { ProtectedRoute } from "@/components/protected-route";
 import { ResultsCharts } from "@/components/results/results-charts";
 import { mockBallots, getMockResults } from "@/lib/mock-data";
-import { AlertTriangle, Loader2, BarChartHorizontalBig, Frown } from "lucide-react";
+import { AlertTriangle, Loader2, BarChartHorizontalBig, Frown, Info } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
-import type { ResultData } from "@/types"; 
+import type { ResultData, Ballot } from "@/types"; 
+import { useAuth } from "@/contexts/auth-context";
+import { isFuture, parseISO } from 'date-fns';
 
 export default function ResultsPage() {
   const routeParams = useParams<{ ballotId: string }>();
   const ballotId = routeParams?.ballotId;
+  const { user, loading: authLoading } = useAuth();
 
-  const [ballot, setBallot] = useState(() => ballotId ? mockBallots.find(b => b.id === ballotId) : undefined);
+  const [ballot, setBallot] = useState<Ballot | undefined>(undefined);
   const [results, setResults] = useState<ResultData[] | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [localLoading, setLocalLoading] = useState(true);
 
   useEffect(() => {
-    setLoading(true);
-    if (ballotId) {
-      const foundBallot = mockBallots.find(b => b.id === ballotId);
-      setBallot(foundBallot);
-      if (foundBallot) {
-        const fetchedResults = getMockResults(ballotId);
-        setResults(fetchedResults);
-      } else {
-        setResults(null); 
-      }
+    // Don't proceed if auth is still loading
+    if (authLoading) {
+      // Set localLoading to true if auth is loading, to show combined loading state
+      setLocalLoading(true); 
+      return;
+    }
+    // If auth is done, but no ballotId, stop local loading (error will be caught by !ballotId check later)
+    if (!ballotId) {
+        setLocalLoading(false);
+        return;
+    }
+
+    setLocalLoading(true); // Start local loading for ballot/results fetch
+    const foundBallot = mockBallots.find(b => b.id === ballotId);
+    setBallot(foundBallot);
+    if (foundBallot) {
+      const fetchedResults = getMockResults(ballotId);
+      setResults(fetchedResults);
     } else {
-      setBallot(undefined);
-      setResults(null);
+      setResults(null); 
     }
     // Simulate API delay
-    setTimeout(() => setLoading(false), 500); 
-  }, [ballotId]);
+    setTimeout(() => setLocalLoading(false), 500); 
+  }, [ballotId, authLoading]);
 
 
-  if (loading) {
+  if (authLoading || localLoading) {
     return (
       <div className="flex flex-col h-[calc(100vh-8rem)] w-full items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -66,6 +76,28 @@ export default function ResultsPage() {
     );
   }
 
+  // Voter restriction: cannot see results for active ballots that haven't ended yet
+  if (user && user.role === 'voter' && ballot.status === 'active' && isFuture(parseISO(ballot.endDate))) {
+    return (
+      <ProtectedRoute allowedRoles={['voter']}>
+        <div className="container mx-auto py-12 text-center flex flex-col items-center">
+          <Alert variant="default" className="max-w-lg w-full shadow-md border-primary/20 bg-primary/5">
+            <Info className="h-5 w-5 text-primary" />
+            <AlertTitle className="text-xl text-primary">Results Not Yet Available</AlertTitle>
+            <AlertDescription className="mt-1 text-foreground/80">
+              Results for "{ballot.title}" are not available to voters while the ballot is still active.
+              Please check back after the voting period has ended on {new Date(ballot.endDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}.
+            </AlertDescription>
+          </Alert>
+          <Button asChild className="mt-6">
+            <Link href="/dashboard">Return to Dashboard</Link>
+          </Button>
+        </div>
+      </ProtectedRoute>
+    );
+  }
+  
+
   if (!results || results.length === 0) {
      return (
       <div className="container mx-auto py-12 text-center flex flex-col items-center">
@@ -85,7 +117,7 @@ export default function ResultsPage() {
   }
 
   return (
-    <ProtectedRoute allowedRoles={['voter', 'admin']}> {/* Both voters and admins can see results */}
+    <ProtectedRoute allowedRoles={['voter', 'admin']}> {/* Both voters and admins can see results (with above voter restriction) */}
       <div className="container mx-auto py-8 px-4">
         <div className="mb-8 p-6 rounded-xl shadow-lg bg-gradient-to-r from-accent via-accent/90 to-primary/80 text-accent-foreground">
             <div className="flex items-center space-x-3">
