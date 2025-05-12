@@ -1,4 +1,6 @@
 
+"use client"; // Added to make this a Client Component
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { mockBallots, mockUsers, mockVotes } from "@/lib/mock-data";
