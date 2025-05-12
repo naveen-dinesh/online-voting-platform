@@ -181,7 +181,7 @@ function saveToLocalStorage<T>(key: string, value: T): void {
 // --- End localStorage Helper ---
 
 // --- Exported Data (Potentially from localStorage) ---
-export let mockUsers: User[] = initialMockUsers; // Users are static for this demo
+export let mockUsers: User[] = loadFromLocalStorage<User[]>('votewiseMockUsers', initialMockUsers);
 
 let loadedMockBallots = loadFromLocalStorage<Ballot[]>('votewiseMockBallots', initialMockBallots);
 const todayMs = new Date().getTime();
@@ -212,6 +212,16 @@ export let mockVotes: Vote[] = loadFromLocalStorage<Vote[]>('votewiseMockVotes',
 // --- End Exported Data ---
 
 // --- Functions to update and save data ---
+export function addUser(newUser: User): User | null {
+  const existingUser = mockUsers.find(u => u.email.toLowerCase() === newUser.email.toLowerCase());
+  if (existingUser) {
+    return null; // Email already exists
+  }
+  mockUsers.push(newUser);
+  saveToLocalStorage('votewiseMockUsers', mockUsers);
+  return newUser;
+}
+
 export function addBallot(newBallot: Ballot): void {
   // Ensure new active ballots have valid future end dates relative to their start date
   if (newBallot.status === 'active') {
@@ -293,18 +303,25 @@ export const mockAnonymizedVoterData = JSON.stringify(
 
 // Initial save to localStorage if empty, or to ensure data integrity after code changes
 if (typeof window !== 'undefined') {
+  if (!localStorage.getItem('votewiseMockUsers')) {
+    saveToLocalStorage('votewiseMockUsers', initialMockUsers);
+  } else {
+    // If users are already in localStorage, we use them.
+    // This ensures that newly registered users persist across sessions.
+    mockUsers = loadFromLocalStorage<User[]>('votewiseMockUsers', initialMockUsers);
+  }
+
   const storedBallots = localStorage.getItem('votewiseMockBallots');
   if (!storedBallots) {
     saveToLocalStorage('votewiseMockBallots', mockBallots);
   } else {
-    // If there are stored ballots, we assume they are more up-to-date than initialMockBallots,
-    // but we still apply the date adjustments to the loaded data.
     // The `mockBallots` variable is already updated with loaded and adjusted data.
-    // We can re-save it to ensure the adjusted dates are persisted if they changed.
+    // Re-save it to ensure the adjusted dates are persisted if they changed.
     saveToLocalStorage('votewiseMockBallots', mockBallots);
   }
   
   if (!localStorage.getItem('votewiseMockVotes')) {
-    saveToLocalStorage('votewiseMockVotes', initialMockVotes); // Use initialMockVotes here if localStorage is empty
+    saveToLocalStorage('votewiseMockVotes', initialMockVotes); 
   }
 }
+

@@ -3,11 +3,12 @@
 
 import type { User } from '@/types';
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { mockUsers } from '@/lib/mock-data'; // Using mock users
+import { mockUsers, addUser as addMockUser } from '@/lib/mock-data'; // Using mock users
 
 interface AuthContextType {
   user: User | null;
   login: (email: string, password?: string, role?: 'voter' | 'admin') => Promise<User | null>;
+  register: (name: string, email: string, password: string) => Promise<{ success: boolean; message: string; user?: User | null }>;
   logout: () => void;
   loading: boolean;
   isAdmin: boolean;
@@ -46,8 +47,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     await new Promise(resolve => setTimeout(resolve, 500));
     
     const normalizedEmail = email.toLowerCase();
-    // Find user by email first
-    const foundUser = mockUsers.find(u => u.email.toLowerCase() === normalizedEmail);
+    // Find user by email first from the potentially updated mockUsers list
+    const currentMockUsers = localStorage.getItem('votewiseMockUsers') ? JSON.parse(localStorage.getItem('votewiseMockUsers')!) : mockUsers;
+    const foundUser = currentMockUsers.find((u: User) => u.email.toLowerCase() === normalizedEmail);
 
     if (foundUser) {
       // Check password
@@ -79,6 +81,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return null;
   };
 
+  const register = async (name: string, email: string, password: string): Promise<{ success: boolean; message: string; user?: User | null }> => {
+    setLoading(true);
+    await new Promise(resolve => setTimeout(resolve, 500)); // Simulate API call
+
+    const newUser: User = {
+      id: `user-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      name,
+      email: email.toLowerCase(),
+      password, // In a real app, hash this password
+      role: 'voter', // Default role for new registrations
+      isVerified: true, // Mock: auto-verify new users
+    };
+
+    const registeredUser = addMockUser(newUser);
+
+    setLoading(false);
+    if (registeredUser) {
+      return { success: true, message: "Registration successful! Please log in.", user: registeredUser };
+    } else {
+      return { success: false, message: "Email already exists. Please try a different email or log in." };
+    }
+  };
+
   const logout = () => {
     setUser(null);
     localStorage.removeItem('voteWiseUser');
@@ -89,7 +114,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const isVoter = !!(user && user.role === 'voter' && user.isVerified);
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading, isAdmin, isVoter }}>
+    <AuthContext.Provider value={{ user, login, register, logout, loading, isAdmin, isVoter }}>
       {children}
     </AuthContext.Provider>
   );
