@@ -233,7 +233,7 @@ export function addBallot(newBallot: Ballot): void {
         newBallot.endDate = endDate.toISOString();
     }
   }
-  mockBallots.unshift(newBallot);
+  mockBallots.unshift(newBallot); // Add to the beginning of the array to show newest first
   saveToLocalStorage('votewiseMockBallots', mockBallots);
 }
 
@@ -242,16 +242,12 @@ export function addVote(newVote: Vote): void {
     v => v.ballotId === newVote.ballotId && v.voterId === newVote.voterId
   );
 
-  const userTryingToVote = mockUsers.find(u => u.id === newVote.voterId);
-
+  // Check if a vote from this user for this ballot already exists
   if (existingVoteIndex !== -1) {
-    if (userTryingToVote && userTryingToVote.role === 'voter') {
-      throw new Error("ALREADY_VOTED");
-    }
-    // Admin or test user overwrites their previous vote
-    mockVotes[existingVoteIndex] = newVote;
-    console.log(`Admin or test user ${newVote.voterId} overwrote vote for ballot ${newVote.ballotId}.`);
+    // If a vote already exists (regardless of user role), throw an error.
+    throw new Error("ALREADY_VOTED");
   } else {
+    // If no existing vote, add the new vote.
     mockVotes.push(newVote);
   }
   saveToLocalStorage('votewiseMockVotes', mockVotes);

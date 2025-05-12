@@ -12,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { AlertCircle, CheckCircle2, Loader2, Send, Info, VoteIcon } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { mockVotes, addVote, mockUsers } from "@/lib/mock-data"; // Updated import
+import { mockVotes, addVote, mockUsers } from "@/lib/mock-data"; 
 import { isFuture, parseISO } from 'date-fns';
 import Link from "next/link";
 
@@ -56,9 +56,7 @@ export function VotingInterface({ ballot, user }: VotingInterfaceProps) {
     );
   }
 
-  const currentUser = mockUsers.find(u => u.id === user.id); // Get full user object for role check
-
-  if (hasVoted && currentUser?.role === 'voter') { 
+  if (hasVoted) { 
     const canViewResults = ballot.status === 'closed' || (ballot.status === 'active' && !isFuture(parseISO(ballot.endDate)));
     return (
       <Card className="w-full max-w-2xl mx-auto shadow-xl my-8 border-accent/30">
@@ -140,46 +138,44 @@ export function VotingInterface({ ballot, user }: VotingInterfaceProps) {
     await new Promise(resolve => setTimeout(resolve, 1200)); 
     
     try {
-      addVote(newVote); // Use imported function; this will throw if voter already voted
-      setHasVoted(true); // Mark as voted for the current session
+      addVote(newVote); 
+      setHasVoted(true); 
 
       const ballotIsEffectivelyActive = ballot.status === 'active' && isFuture(parseISO(ballot.endDate));
+      const currentUser = mockUsers.find(u => u.id === user.id);
 
-      if (currentUser?.role === 'admin') { 
-        toast({
-          title: "Vote Submitted Successfully! (Admin Action)",
-          description: `Viewing results for "${ballot.title}".`,
-          variant: "default",
-          duration: 5000,
-        });
-        router.push(`/results/${ballot.id}`);
-      } else if (currentUser?.role === 'voter') {
+      let toastTitle = "Vote Submitted Successfully!";
+      let toastDescription = `Thank you for your participation in "${ballot.title}".`;
+      let redirectPath = "/dashboard";
+
+      if (currentUser?.role === 'voter') {
         if (ballotIsEffectivelyActive) {
-          toast({
-            title: "Vote Submitted Successfully!",
-            description: `Thank you for your participation. Results for "${ballot.title}" will be available after the ballot closes.`,
-            variant: "default",
-            duration: 6000,
-          });
-          router.push('/dashboard'); 
-        } else { 
-          toast({
-            title: "Vote Submitted Successfully!",
-            description: `Thank you for your participation. Viewing results for "${ballot.title}".`,
-            variant: "default",
-            duration: 5000,
-            action: (
-              <Button variant="outline" size="sm" onClick={() => router.push(`/results/${ballot.id}`)}>
-                View Results
-              </Button>
-            )
-          });
-          router.push(`/results/${ballot.id}`);
+          toastDescription += " Results will be available after the ballot closes.";
+        } else {
+          toastDescription += " Viewing results.";
+          redirectPath = `/results/${ballot.id}`;
         }
-      } else { 
-          toast({title: "Vote Submitted!", description: "Redirecting to dashboard."});
-          router.push('/dashboard');
+      } else if (currentUser?.role === 'admin') {
+        // For admins, always redirect to results if vote is successful (first time)
+        toastTitle = "Vote Submitted (Admin)";
+        toastDescription = `Viewing results for "${ballot.title}".`;
+        redirectPath = `/results/${ballot.id}`;
       }
+
+
+      toast({
+        title: toastTitle,
+        description: toastDescription,
+        variant: "default",
+        duration: 5000,
+        action: (redirectPath.startsWith('/results') ? 
+          <Button variant="outline" size="sm" onClick={() => router.push(redirectPath)}>
+            View Results
+          </Button> : undefined
+        )
+      });
+      router.push(redirectPath);
+
     } catch (e: any) {
       if (e.message === "ALREADY_VOTED") {
         setHasVoted(true); // Ensure UI reflects this state
@@ -210,15 +206,6 @@ export function VotingInterface({ ballot, user }: VotingInterfaceProps) {
             <CardTitle className="text-3xl md:text-4xl font-bold text-primary">{ballot.title}</CardTitle>
         </div>
         <CardDescription className="text-base text-muted-foreground leading-relaxed">{ballot.description}</CardDescription>
-         {currentUser?.role === 'admin' && hasVoted && (
-          <Alert variant="default" className="mt-4 bg-blue-50 border-blue-300">
-            <Info className="h-5 w-5 text-blue-600" />
-            <AlertTitle className="text-blue-700">Admin Note</AlertTitle>
-            <AlertDescription className="text-blue-600">
-              You have previously submitted a test vote for this ballot. Submitting again will overwrite your previous test vote. Voters can only vote once.
-            </AlertDescription>
-          </Alert>
-        )}
       </CardHeader>
       <form onSubmit={handleSubmit}>
         <CardContent className="p-6 space-y-10">
@@ -279,13 +266,13 @@ export function VotingInterface({ ballot, user }: VotingInterfaceProps) {
           <Button 
             type="submit" 
             className="w-full text-xl py-7 font-semibold tracking-wide" 
-            disabled={isLoading || (hasVoted && currentUser?.role === 'voter')} 
+            disabled={isLoading || hasVoted} 
           >
             {isLoading ? (
               <>
                 <Loader2 className="mr-3 h-6 w-6 animate-spin" /> Processing Your Vote...
               </>
-            ) : (hasVoted && currentUser?.role === 'voter') ? (
+            ) : hasVoted ? (
               <>
                 <CheckCircle2 className="mr-3 h-6 w-6" /> Vote Submitted
               </>
